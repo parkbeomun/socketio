@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+        #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+        #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+        #input:focus { outline: none; }
+        #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages > li { padding: 0.5rem 1rem; }
+        #messages > li:nth-child(odd) { background: #efefef; }
+
+        #footer {
+            position: absolute;
+            bottom: 100px;
+            text-align: center;
+            width: 100%;
+            background-color: bisque;
+        }
+        #writing_message p {
+            text-align: center;
+        }
+
+        .my { text-align: right}
+
+        #initModal {
+            display: none;
+        }
+    </style>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script></head>
+<body>
+<ul id="messages"></ul>
+<form id="form" action="">
+    <input id="input" autocomplete="off" readonly/><button>Send</button>
+</form>
+<div id="footer"><p id="writing_message"></p></div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="nickNameModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="inputGroup-sizing-sm">닉네임</span>
+                    </div>
+                    <input type="text" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm" id="nickName" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="connect()">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+    $(document).ready(function(){
+        $("#nickNameModal").modal('show')
+    });
+
+
+    var socket = io();
+
+    var messages = document.getElementById("messages");
+    var form = document.getElementById("form");
+    var input = document.getElementById("input");
+    var nickName = document.getElementById("nickName");
+    var writing_message = document.getElementById("writing_message");
+
+
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if(input.value) {
+            socket.emit('chat message', input.value);
+            addChatRow(input.value, true)
+            input.value = '';
+        }
+    })
+
+    socket.on('chat message', function(msg) {
+        writing_message.innerText = ''
+        addChatRow(msg)
+    })
+
+    socket.on('api_connect', function(res) {
+        input.readOnly = false;
+        addChatRow(res.helloMsg)
+    })
+
+    socket.on('disconnection', function(msg) {
+        addChatRow(msg)
+    })
+
+    function connect () {
+        if(nickName.value == '') {
+            alert('닉네임을 먼저 입력해주세요')
+            return;
+        }
+        socket.emit('api_connect', {
+            nickName:nickName.value
+        });
+        $("#nickNameModal").modal('hide')
+    }
+
+    function addChatRow(msg,self) {
+        console.log('add msg >  ',msg);
+        var item = document.createElement("li");
+        if(self) {
+            item.classList.add("my");
+        }
+        item.textContent = msg;
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight)
+    }
+
+    input.addEventListener( "keyup" , function (e) {
+        socket.emit('writing', input.value)
+    })
+    socket.on('writing', function(msg) {
+        writing_message.innerText = msg;
+    })
+
+
+
+</script>
+
+</html>
